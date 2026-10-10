@@ -3,7 +3,7 @@ import json
 from tqdm import tqdm
 
 from llm_config import TEMPERATURE, MAX_TOKENS, TOP_P, NUM_EXAMPLES, NUM_SAMPLES, SAMPLING_TEMPERATURE, SEED, \
-    LLM_ID, LLM_CLIENT, EXAMPLE_SELECTOR, LOG_FILE, DATASET, SYS_PROMPT_LVL, SYSTEM_PROMPT
+    LLM_ID, LLM_CLIENT, EXAMPLE_SELECTOR, LOG_FILE, DATASET, SYS_PROMPT_LVL, SYSTEM_PROMPT, ENABLE_THINKING
 import os
 from utils import unwrap_python_code, extract_json_from_code_output, is_unsat, exec_code, evaluate_single_turn
 from datetime import datetime, UTC
@@ -112,8 +112,10 @@ def call_llm(messages, temp=TEMPERATURE):
         completion_tokens = response.usage.completion_tokens
         prompt_tokens = response.usage.prompt_tokens
     else:
+        # vLLM only: pass Qwen3's enable_thinking switch to the chat template
+        extra = {"extra_body": {"chat_template_kwargs": {"enable_thinking": ENABLE_THINKING}}} if 'vllm-local' in LLM_ID else {}
         response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, temperature=temp, seed=SEED,
-                                                      max_tokens=MAX_TOKENS, top_p=TOP_P)
+                                                      max_tokens=MAX_TOKENS, top_p=TOP_P, **extra)
         max_tokens_reached = (response.choices[0].finish_reason == 'length')
         response_content = response.choices[0].message.content
         completion_tokens = response.usage.completion_tokens

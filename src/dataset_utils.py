@@ -52,6 +52,8 @@ def parse_single_file(file_path: Path, instance_id: int) -> DatasetInstance:
         category = InstanceCategory.CPMPY_EXAMPLES
     elif parent_dir.name == "csplib":
         category = InstanceCategory.CSPLIB
+    elif parent_dir.name == "nsp_rules":
+        category = InstanceCategory.NSP_RULES
     elif parent_dir.name == "hakan_examples":
         category = InstanceCategory.HAKANK_EXAMPLES
     else:

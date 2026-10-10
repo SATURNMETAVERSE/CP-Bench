@@ -26,7 +26,7 @@ ANTHROPIC_API_KEY = "TODO"
 # LLM_ID = "ollama_gemma3:4b"
 # LLM_ID = 'ollama_qwen3:8b'
 
-LLM_ID = "gpt-5-mini-2025-08-07"
+# LLM_ID = "gpt-5-mini-2025-08-07"
 # LLM_ID = "gpt-5-2025-08-07"
 
 # LLM_ID = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
@@ -47,7 +47,8 @@ LLM_ID = "gpt-5-mini-2025-08-07"
 # LLM_ID = 'meta-llama/Llama-3.3-70B-Instruct-Turbo'
 # LLM_ID = 'claude-3-7-sonnet-20250219'
 # LLM_ID = 'claude-sonnet-4-20250514'
-# LLM_ID = 'vllm-local-model'
+LLM_ID = 'vllm-local-model'  # Qwen/Qwen3-1.7B served by vLLM as 'vllm-local-model'
+ENABLE_THINKING = False  # Qwen3 hybrid model: non-thinking mode for the Baseline
 
 if LLM_ID.startswith('gpt') or LLM_ID.startswith('o1-') or LLM_ID.startswith('o4-'):
     LLM_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
@@ -131,7 +132,7 @@ assert SAMPLING_TEMPERATURE >= 0.0
 # Self-Debugging #
 #####################
 SELF_VERIFICATION_TYPE = 'single'  # 'chat' or 'single'
-MAX_SELF_VERIFICATION_ATTEMPTS = 1  # Maximum number of attempts to generate a correct response with self-verification (use 0 for no retries)
+MAX_SELF_VERIFICATION_ATTEMPTS = 0  # Baseline (Q1): 0. Paper Q3 Self-Verification: 10.  # Maximum number of attempts to generate a correct response with self-verification (use 0 for no retries)
 assert MAX_SELF_VERIFICATION_ATTEMPTS >= 0
 
 ###################
@@ -139,12 +140,12 @@ assert MAX_SELF_VERIFICATION_ATTEMPTS >= 0
 ###################
 TEMPERATURE = 0.0
 TOP_P = 0.95
-MAX_TOKENS = 3_000  # Maximum number of tokens to generate
+MAX_TOKENS = 12_000  # Maximum number of tokens to generate (12k, as reported in the paper)
 LIMIT = None  # How many instances to run in the pipeline (if we want to run them all, set to None)
 SEED = 42  # Random seed for the LLM sampling
 MAX_LLM_CALL_RETRIES = 3  # Maximum number of retries for calling the LLM API in case of an error
 
-DATASET = load_dataset('data')
+DATASET = load_dataset('data_nsp')
 
 # RAICL
 EXAMPLE_SELECTOR = None

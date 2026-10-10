@@ -7,6 +7,7 @@ class InstanceCategory(Enum):
     CSPLIB = 3
     HAKANK_EXAMPLES = 4
     COMPLEX_OR = 5
+    NSP_RULES = 6
 
 class ErrorType(Enum):
     TIMEOUT_RUNNING_GENERATED_CODE = 1
