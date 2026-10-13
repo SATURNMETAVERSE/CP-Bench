@@ -151,7 +151,10 @@ DATASET = load_dataset('data_nsp')
 EXAMPLE_SELECTOR = None
 if NUM_EXAMPLES > 0:
     os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
-    examples = [{"instance_id": str(p.id), "prompt": p.get_prompt(), "wrapped_code": p.get_content_after_description(wrapped=True)} for p in DATASET]
+    # Retrieval pool = the paper's original benchmark ('data'), not the NSP problems: retrieving from
+    # data_nsp would show the model the ground truth of the other rules. Ids are prefixed so they never
+    # match an NSP instance id; the leave-one-out step then drops the extra (k+1)-th example as usual.
+    examples = [{"instance_id": f"pool_{p.id}", "prompt": p.get_prompt(), "wrapped_code": p.get_content_after_description(wrapped=True)} for p in load_dataset('data')]
     # we ask for 1 more, so that we can omit the first one (it's the prompt itself)
     # EXAMPLE_SELECTOR = MaxMarginalRelevanceExampleSelector.from_examples(examples, OpenAIEmbeddings(model='text-embedding-3-large'), Chroma, k=NUM_EXAMPLES + 1, fetch_k=len(DATASET))
     EXAMPLE_SELECTOR = SemanticSimilarityExampleSelector.from_examples(examples, OpenAIEmbeddings(model='text-embedding-3-large'), Chroma, k=NUM_EXAMPLES + 1)
