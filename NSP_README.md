@@ -6,7 +6,8 @@ the problems (`data_nsp/nsp_rules/`, six single-rule problems) and the LLM (Qwen
 ## Run (Baseline, Q1)
 
 ```bash
-pip install -r requirements.txt vllm
+pip install -r requirements.txt "setuptools<81"   # cpmpy 0.9.25 needs pkg_resources
+pip install vllm                                       # better in a separate venv
 vllm serve Qwen/Qwen3-1.7B --served-model-name vllm-local-model --port 8001 --max-model-len 32768 &
 python src/pipeline.py                                  # writes results/vllm-local-model/log_<time>.json
 python src/semantic_check.py results/vllm-local-model/log_<time>.json

@@ -37,9 +37,17 @@ def build(code, n_nurses, n_days):
         pass
     finally:
         cp.Model.solve = orig
-    S = cp.cpm_array(ns["schedule"])
-    if S.shape != (n_nurses, n_days):
-        raise ValueError(f"schedule shape {S.shape} != {(n_nurses, n_days)} (data hardcoded?)")
+    # The model may name the array anything (schedule, nurses, shifts...): take `schedule` if it has
+    # the right shape, else the only variable array of shape (n_nurses, n_days).
+    shape = (n_nurses, n_days)
+    is_grid = lambda v: isinstance(v, cp.expressions.variables.NDVarArray) and v.shape == shape
+    grids = [v for k, v in ns.items() if is_grid(v) and not k.startswith("_")]
+    if is_grid(ns.get("schedule")):
+        S = ns["schedule"]
+    elif len(grids) == 1:
+        S = grids[0]
+    else:
+        raise ValueError(f"found {len(grids)} variable arrays of shape {shape}; cannot identify the schedule")
     return toplevel_list(captured["model"].constraints), S
 
 
