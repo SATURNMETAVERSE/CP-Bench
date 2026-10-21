@@ -42,10 +42,16 @@ def build(code, n_nurses, n_days):
     shape = (n_nurses, n_days)
     is_grid = lambda v: isinstance(v, cp.expressions.variables.NDVarArray) and v.shape == shape
     grids = [v for k, v in ns.items() if is_grid(v) and not k.startswith("_")]
+    # also accept a Python list of n_nurses row arrays of length n_days
+    is_row = lambda v: isinstance(v, cp.expressions.variables.NDVarArray) and v.shape == (n_days,)
+    rows = [v for k, v in ns.items() if not k.startswith("_") and isinstance(v, (list, tuple))
+            and len(v) == n_nurses and all(is_row(r) for r in v)]
     if is_grid(ns.get("schedule")):
         S = ns["schedule"]
     elif len(grids) == 1:
         S = grids[0]
+    elif not grids and len(rows) == 1:
+        S = cp.cpm_array([list(r) for r in rows[0]])
     else:
         raise ValueError(f"found {len(grids)} variable arrays of shape {shape}; cannot identify the schedule")
     return toplevel_list(captured["model"].constraints), S
@@ -56,12 +62,21 @@ def none_of(cons):
     return ~cp.all(cons) if cons else cp.BoolVal(False)
 
 
+def outside(X, Y):
+    """X takes a value outside the domain of Y somewhere (variable domains are constraints too)."""
+    return cp.any([(x < y.lb) | (x > y.ub) for x, y in zip(X.flatten(), Y.flatten())])
+
+
 def check(gen_code, gt_code):
-    # under-constraint: gen(S) and not GT(S), same S
+    # under-constraint: gen(S) and not GT(S). Either S leaves the reference domain {0..3},
+    # or S is inside both domains and violates the rule.
     g_cons, gS = build(gen_code, N_NURSES, N_DAYS)
     t_cons, tS = build(gt_code, N_NURSES, N_DAYS)
-    m = cp.Model(g_cons, gS == tS, none_of(t_cons))
-    under = m.solve(time_limit=60)
+    under = False
+    for m in (cp.Model(g_cons, outside(gS, tS)), cp.Model(g_cons, gS == tS, none_of(t_cons))):
+        if m.solve(time_limit=60):
+            under = True
+            break
     witness = gS.value().tolist() if under else None
 
     # over-constraint: a rule-valid schedule the generated model rejects.
@@ -69,10 +84,10 @@ def check(gen_code, gt_code):
     # otherwise negating it is unsound (extra variables are existential), so enumerate 1 nurse x OVER_DAYS.
     extra = set(get_variables(g_cons)) - set(gS.flatten())
     if not extra:
-        m = cp.Model(t_cons, gS == tS, none_of(g_cons))
-        over = int(m.solve(time_limit=60))
-        if over:
-            witness_over = tS.value().tolist()
+        # a valid S outside the generated variables' domains (e.g. intvar(0, 2): no Rest), or inside them
+        # but violating a generated constraint
+        over = int(cp.Model(t_cons, outside(tS, gS)).solve(time_limit=60)
+                   or cp.Model(t_cons, gS == tS, none_of(g_cons)).solve(time_limit=60))
     else:
         try:
             g_cons, gS = build(gen_code, 1, OVER_DAYS)

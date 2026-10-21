@@ -57,7 +57,8 @@ elif LLM_ID == 'deepseek-coder' or LLM_ID == 'deepseek-chat' or LLM_ID == 'deeps
 elif 'claude' in LLM_ID:
     LLM_CLIENT = Anthropic(api_key=ANTHROPIC_API_KEY)
 elif 'vllm-local' in LLM_ID:
-    LLM_CLIENT = OpenAI(api_key='EMPTY', base_url='http://localhost:8001/v1')
+    # long generations (up to 12k tokens, 4 in parallel) can exceed the client's default 600 s timeout
+    LLM_CLIENT = OpenAI(api_key='EMPTY', base_url='http://localhost:8001/v1', timeout=3600)
 elif LLM_ID.startswith('ollama_'):
     LLM_CLIENT = None
 else:
