@@ -71,7 +71,7 @@ def get_llm_best_response(responses_content):
     return best_response_content, most_common_solution_idx
 
 
-def call_llm(messages, temp=TEMPERATURE):
+def call_llm(messages, temp=TEMPERATURE, seed=SEED):
     if 'claude' in LLM_ID:
         if messages[0]['role'] == 'system':
             response = LLM_CLIENT.messages.create(model=LLM_ID, max_tokens=MAX_TOKENS, messages=messages[1:],
@@ -90,7 +90,7 @@ def call_llm(messages, temp=TEMPERATURE):
                 new_messages.extend(messages[2:])
             messages = new_messages
 
-        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, seed=SEED,
+        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, seed=seed,
                                                       max_completion_tokens=MAX_TOKENS)
         max_tokens_reached = (response.choices[0].finish_reason == 'length')
         response_content = response.choices[0].message.content
@@ -105,7 +105,7 @@ def call_llm(messages, temp=TEMPERATURE):
         completion_tokens = response.eval_count
         response_content = response.message.content
     elif LLM_ID.startswith('gpt-5-'):
-        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, seed=SEED,
+        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, seed=seed,
                                                       max_completion_tokens=MAX_TOKENS)
         max_tokens_reached = (response.choices[0].finish_reason == 'length')
         response_content = response.choices[0].message.content
@@ -114,7 +114,7 @@ def call_llm(messages, temp=TEMPERATURE):
     else:
         # vLLM only: pass Qwen3's enable_thinking switch to the chat template
         extra = {"extra_body": {"chat_template_kwargs": {"enable_thinking": ENABLE_THINKING}}} if 'vllm-local' in LLM_ID else {}
-        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, temperature=temp, seed=SEED,
+        response = LLM_CLIENT.chat.completions.create(messages=messages, model=LLM_ID, temperature=temp, seed=seed,
                                                       max_tokens=MAX_TOKENS, top_p=TOP_P, **extra)
         max_tokens_reached = (response.choices[0].finish_reason == 'length')
         response_content = response.choices[0].message.content
@@ -164,7 +164,9 @@ def get_llm_responses(instance, max_workers=4):
     total_completion_tokens = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(call_llm, messages, TEMPERATURE if i == 0 else SAMPLING_TEMPERATURE)
+        # One seed per sample (SEED, SEED+1, ...): with a backend that honours the seed exactly (vLLM),
+        # a shared seed makes all temperature samples identical.
+        futures = [executor.submit(call_llm, messages, TEMPERATURE if i == 0 else SAMPLING_TEMPERATURE, SEED + i)
                    for i in range(NUM_SAMPLES)]
 
         for i, future in enumerate(futures):
